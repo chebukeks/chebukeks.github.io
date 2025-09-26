@@ -49,10 +49,14 @@
         }
 
         button {
-            display: block;
-            margin: 0 auto;
+            display: inline-block;
+            margin: 10px 5px;
             padding: 10px 20px;
             font-size: 16px;
+        }
+
+        .button-container {
+            text-align: center;
         }
     </style>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -63,7 +67,10 @@
         <h1>УЛЬТИМАТИВНЫЙ "ЛЮБИМАЯ ИГРА MEME"</h1>
         <div class="grid"></div>
     </div>
-    <button id="screenshot">Генерировать скриншот</button>
+    <div class="button-container">
+        <button id="screenshot">Генерировать скриншот</button>
+        <button id="clear">Очистить</button>
+    </div>
 
     <script>
         const phrases = [
@@ -76,16 +83,40 @@
 
         let currentPlaceholder = null;
 
+        const saveImage = (index, dataUrl) => {
+            localStorage.setItem(`pastedImage_${index}`, dataUrl);
+        };
+
+        const loadImages = () => {
+            const placeholders = document.querySelectorAll('.image-placeholder');
+            placeholders.forEach((placeholder, index) => {
+                const imageData = localStorage.getItem(`pastedImage_${index}`);
+                if (imageData) {
+                    placeholder.style.backgroundImage = `url(${imageData})`;
+                    placeholder.innerText = '';
+                }
+            });
+        };
+
         document.addEventListener('paste', (event) => {
             if (!currentPlaceholder) return;
+
+            const targetPlaceholder = currentPlaceholder;
+
             const items = event.clipboardData.items;
             let imageFound = false;
             for (let item of items) {
                 if (item.type.startsWith('image/')) {
                     const blob = item.getAsFile();
-                    const url = URL.createObjectURL(blob);
-                    currentPlaceholder.style.backgroundImage = `url(${url})`;
-                    currentPlaceholder.innerText = '';
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const dataUrl = e.target.result;
+                        targetPlaceholder.style.backgroundImage = `url(${dataUrl})`;
+                        targetPlaceholder.innerText = '';
+                        const placeholderIndex = Array.from(document.querySelectorAll('.image-placeholder')).indexOf(targetPlaceholder);
+                        saveImage(placeholderIndex, dataUrl);
+                    };
+                    reader.readAsDataURL(blob);
                     imageFound = true;
                     break;
                 }
@@ -97,12 +128,13 @@
         });
 
         const grid = document.querySelector('.grid');
-        phrases.forEach(phrase => {
+        phrases.forEach((phrase, index) => {
             const card = document.createElement('div');
             card.className = 'card';
             const placeholder = document.createElement('div');
             placeholder.className = 'image-placeholder';
             placeholder.innerText = 'Нажми, чтобы вставить изображение';
+            placeholder.dataset.index = index;
             placeholder.addEventListener('click', (event) => {
                 currentPlaceholder = event.target;
                 alert('Теперь вставьте изображение из буфера обмена (Ctrl+V или Command+V)');
@@ -123,6 +155,15 @@
                 link.click();
             });
         });
+
+        document.getElementById('clear').addEventListener('click', () => {
+            if (confirm('Вы уверены, что хотите очистить все изображения?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        });
+
+        window.addEventListener('load', loadImages);
     </script>
 </body>
 
